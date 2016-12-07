@@ -82,7 +82,7 @@ The next step is to dig the same query against Yeti DNS root server. And what we
 |#23   |dnsworkshop/informnis | 1269      |  N    |N|	1440/1440|
 |#24   |Monshouwer Internet Diensten| 1255      |  N    |N|	1440/1440|
 |#25   |DATEV | 1255      |  N    |N|	1440/1380|
-Table 1 – Yeti Root Server Response Profile to a large DNS response
+Table 2 – Yeti Root Server Response Profile to a large DNS response
 
 No Truncation for all Yeti root server. That's means not additional DNS routine designed for TC in Yeti root servers.
 
