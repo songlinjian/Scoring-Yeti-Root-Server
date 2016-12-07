@@ -86,6 +86,8 @@ Table 1 – Yeti Root Server Response Profile to a large DNS response
 
 No Truncation for all Yeti root server. That's means not additional DNS routine designed for TC in Yeti root servers.
 
+#2 and #14 accept Geoff's suggest to change TCP MSS to 1220 and reduce the risk for TCP segment fragmentation.
+
 For #23 (Bundy?) The response is bigger than others because it does not apply name compression for mname and rname in SOA record which increase 12 octets , and it also compressed the root from one label to two labels.
 
 ### Metrics for scoring
