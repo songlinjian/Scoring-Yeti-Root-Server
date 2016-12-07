@@ -61,13 +61,13 @@ The next step is to dig the same query against Yeti DNS root server. And what we
 |#2   |WIDE| 1255      |  N    |UDP     | 1440/1220|
 |#3   |TISF| 1252      |  N    |UDP+ TCP|	1440/1440|
 |#4   |AS59715| 1255    |  N    |UDP+ TCP  | 1440/1380|
-|#5   |Dahu| 1255      |  N    |N		  |	1440/1440|
-|#6   |BIS | 1252      |  N    |N|	1440/1440|
+|#5   |Dahu Group| 1255      |  N    |N		  |	1440/1440|
+|#6   |Bond Internet Systems | 1252      |  N    |N|	1440/1440|
 |#7   |MSK-IX | 1252      |  N    |UDP+ TCP|	1440/1440|
 |#8   |CERT Austria | 1252      |  N    |N|	1440/1440|
 |#9   |ERNET | 1252      |  N    |N|	1440/1440|
-|#10   |dnsworkshop | 1255      |  N    |UDP|	1440/1440|
-|#11   |CONIT S.A.S | -      |  -    |-|	-|
+|#10   |dnsworkshop/informnis | 1255      |  N    |UDP|	1440/1440|
+|#11   |CONIT S.A.S Colombia | -      |  -    |-|	-|
 |#12   |Dahu Group | 1255      |  N    |N|	1440/1440|
 |#13   |Aqua Ray SAS| 1255      |  N    |N|	1440/1380|
 |#14   |SWITCH| 1252      |  N    |N|	1440/1220|
@@ -79,8 +79,8 @@ The next step is to dig the same query against Yeti DNS root server. And what we
 |#20   |Yeti@Australia | 1252      |  N    |N|	1440/1440|
 |#21   |ERNET| 1252      |  N    |N|	1440/1380|
 |#22   |ERNET| 1252      |  N    |N|	1440/1440|
-|#23   |dnsworkshop | 1269      |  N    |N|	1440/1440|
-|#24   |MID | 1255      |  N    |N|	1440/1440|
+|#23   |dnsworkshop/informnis | 1269      |  N    |N|	1440/1440|
+|#24   |Monshouwer Internet Diensten| 1255      |  N    |N|	1440/1440|
 |#25   |DATEV | 1255      |  N    |N|	1440/1380|
 
 
