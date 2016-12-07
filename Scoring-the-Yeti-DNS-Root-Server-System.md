@@ -33,7 +33,7 @@ And what we see from each root server is shown in Table 1.
 |K|1268|N|N|1460/1380|1268|N|N|1440/1380|
 |L|1268|N|N|1460/1380|1268|N|N|1440/1380|
 |M|-|-|-|-|1268|N|TCP|1440/1380|
-Table 1 – Root Server Response Profile to a large DNS response
+Table 1 – IANA Root Server Response Profile to a large DNS response
 
 The structure of Table 1 is a slightly different from the table in APNIC's blog article. There are additional columns show the exact size of DNS reponse massage from each root server. We list them because we found them are different in 3 octets. A,E,H,J,K,L,M response 1268 octets and others 1265 octets. After some digging, it is found that different root servers behave differently due to the name compression in NSEC record.  In the case of that non-existent name query, 'aaa' is a common label in both NSEC records of root and 'aaa'. Saving 3 bytes by careful name compression is not a huge optimization but in certain cases it can sharply avoid truncation or fragmentation.   
 
@@ -82,10 +82,13 @@ The next step is to dig the same query against Yeti DNS root server. And what we
 |#23   |dnsworkshop/informnis | 1269      |  N    |N|	1440/1440|
 |#24   |Monshouwer Internet Diensten| 1255      |  N    |N|	1440/1440|
 |#25   |DATEV | 1255      |  N    |N|	1440/1380|
+Table 1 – Yeti Root Server Response Profile to a large DNS response
 
+No Truncation for all Yeti root server. That's means not additional DNS routine designed for TC in Yeti root servers.
 
+For #23 (Bundy?) The response is bigger than others because it does not apply name compression for mname and rname in SOA record which increase 12 octets , and it also compressed the root from one label to two labels.
 
-
+### Metrics for scoring
 
 ### Scoring Yeti Root Servers
 
