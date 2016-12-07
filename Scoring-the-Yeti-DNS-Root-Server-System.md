@@ -49,7 +49,7 @@ M is fragmenting the TCP segment in this way! It is odd that large UDP response 
 
 As to truncate behavior of Root server, as expected, our test shows the same pattern that in IPv4 B and G truncate the response, in IPv6 A and J join B and G to truncate the response. By definition truncation happens when DNS massage length is greater than that permitted on the transmission channel. The truncation behavior of A, B, G and J  looks odd because they truncate the response even when both query and response specifies a large EDNS0 buffer size. There must be a independent and paralleled routine to determine truncate or not. Obviously for these root operators they prefer to  truncate the response, fall back to TCP than fragmenting a larger response. This preference is stronger in IPv6 and IPv4 (A and J) because the potential problem of fragments missing or filtering in IPv6 is worse than in IPv4 which is explained in detailed in APNIC blog article. ( 900?)
 
-It is observed that there is a Server Failure from E in IPv6 and it happens only in China. It is also observed C in IPv6 and M in IPv4 are unreachable as the time of testing. By trace-route, the problem is spotted by upstream network provides. It is remind us that DNS system especially the Root server system is vulnerable due to security attack or routing problems.
+It is observed that there is a Server Failure from E in IPv6 and it happens only in China. It is also observed C in IPv6 and M in IPv4 are unreachable as the time of testing. By trace-route, the problem is spotted by upstream network provides. It reminds us that DNS system especially the Root server system is vulnerable due to security attack or routing problems.
 
 ### Test on Yeti DNS Root Server
 
