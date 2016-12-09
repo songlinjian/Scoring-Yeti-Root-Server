@@ -3,19 +3,21 @@
 
 ### 1. Introduction
 
-Yeti DNS Project is a live DNS root server system testbed which is designed and operated for experiments and testing. It is curious for many people how it works under a environment which is a pure IPv6, with more than 13 NS servers, with multiple signers, and testing ZSK/KSK rolling. One Key issue here is about the large DNS response, because many Yeti experiments lead to produces large DNS response (even more than 1600 octets).
+[Yeti DNS Project](https://yeti-dns.org) is a live DNS root server system testbed which is designed and operated for experiments and testing. Many people are curious how it works under an environment which is pure IPv6, with more than 13 NS servers, with multiple signers, and testing ZSK/KSK rolling. One key issue here is large DNS responses, because many Yeti experiments lead to large DNS responses - even more than 1600 octets.
 
 
-Why Large DNS response is relevant and How DNS handles the large response is introduced comprehensively by Geoff's recent article in APNIC blog [ref TBD]. (Thanks Geoff!:) In additional in his article, a scoring model is proposed and applied it to evaluate current 13 DNS root servers how they handle large response. Triggers by Geoff's work, an intuitive idea is formed to score the Yeti DNS root server system using the same testing and metrics. The results are summarized in this document. 
+Why large DNS responses are relevant and how DNS handles large responses is introduced comprehensively by Geoff's articles published in the APNIC blog [_Evaluating IPv4 and IPv6 packet fragmentation_](https://blog.apnic.net/2016/01/28/evaluating-ipv4-and-ipv6-packet-frangmentation/) and [_Fragmenting IPv6_](https://blog.apnic.net/2016/05/19/fragmenting-ipv6/) (thanks Geoff!). More recently, Geoff published a pair of articles examining the root servers system behavior, [_Scoring the Root Server System_](https://labs.apnic.net/?p=915) and [_Scoring the DNS Root Server System, Pt 2 - A Sixth Star?_](https://labs.apnic.net/?p=924). In these articles, a scoring model is proposed and applied it to evaluate current 13 DNS root servers how they handle large response.
+
+Triggered by Geoff's work, we formed the idea of scoring the Yeti DNS root server system using the same testing and metrics. The results are summarized in this document. 
 
 
-### 2. Reply the testing on IANA DNS Root Server
+### 2. Repeat the Tests on the IANA DNS Root Servers
 
-We firstly repeat the testing on IANA DNS root server. It is expected to confirm the test result and looking for any new findings in different vantage points and metrics. Using the same approach we dig queries against each root servers with a long query name for a non-existent domain name like this to get a response of 1268 octets:
+We first repeat the testing on the IANA DNS root servers. It is expected to confirm the test results, but may show some new findings from different vantage points and metrics. Using the same approach we use the [<tt>dig</tt> command](https://en.wikipedia.org/wiki/Dig_(command)) to send queries against each root servers with a long query name for a non-existent domain name like this to get a response of 1268 octets:
 
     dig aaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +dnssec @198.41.0.4    +bufsize=4096
 
-And what we see from each root server is shown in Table 1.
+And what we see from each root server is shown in **Table 1**.
 
 
 | Root | Response size(v4) | Truncate (v4)| Fragment (v4) | TCP MSS (v4) |Response size(v6) | Truncate (v6) | Fragment (v6) | TCP MSS (v6)|
@@ -33,27 +35,27 @@ And what we see from each root server is shown in Table 1.
 |K|1268|N|N|1460/1380|1268|N|N|1440/1380|
 |L|1268|N|N|1460/1380|1268|N|N|1440/1380|
 |M|-|-|-|-|1268|N|TCP|1440/1380|
-Table 1 – IANA Root Server Response Profile to a large DNS response
+**Table 1** – IANA Root Server Response Profile with large DNS responses
 
-The structure of Table 1 is a slightly different from the table in APNIC's blog article. There are additional columns show the exact size of DNS reponse massage from each root server. We list them because we found them are different in 3 octets. A,E,H,J,K,L,M response 1268 octets and others 1265 octets. After some digging, it is found that different root servers behave differently due to the name compression in NSEC record.  In the case of that non-existent name query, 'aaa' is a common label in both NSEC records of root and 'aaa'. Saving 3 bytes by careful name compression is not a huge optimization but in certain cases it can sharply avoid truncation or fragmentation.   
+The structure of **Table 1** is a slightly different from the table in APNIC's blog article. There are additional columns to show the exact size of DNS reponse messages from each root server. We list them because we found them are different by 3 octets. A,E,H,J,K,L,M have responses of 1268 octets and others 1265 octets. After some digging, we found that different root servers behave differently due to the name compression of the NSEC record.  In the case of our non-existent name query, 'aaa' is a common label in both NSEC records of root and 'aaa'. Saving 3 bytes by careful name compression is not a huge optimization but in certain cases even 3 bytes could avoid truncation or fragmentation.   
 
-There is another difference when we display the TCP MSS information in the table. In APNIC's article it said inn IPv4 all the root servers offer a TCP MSS of 1,460 octets and the value is 1,440 octets in IPv6. It maybe true if there is no middle-box or firewall edit the TCP MSS intentionally. By observation, the TCP SYN initiated by testing resolver carries the TCP MSS of 1460 octets in IPv4 and 1440 octets in IPv6, but most TCP SYN/ACK responded by root servers are all 1380 octets. As far as we know, TCP MSS of 1380 octets is a special value edited by some firewalls on the path for security reasons (CISCO ASA firewall). 
+There is another difference when we display the TCP MSS information in the table. In APNIC's article it said that in IPv4 all the root servers offer a TCP MSS of 1460 octets and the value is 1440 octets in IPv6. It may be true if there is no middle-box or firewall which changes the TCP MSS intentionally. In our observation, the TCP SYN initiated by testing resolver carries the TCP MSS of 1460 octets in IPv4 and 1440 octets in IPv6, but the TCP SYN/ACK responded by root servers are all 1380 octets. As far as we know, TCP MSS of 1380 octets is a special value used by some firewalls on the path for security reasons (CISCO ASA firewall). 
 
-Let's look at Fragment first! 
+Let's look at fragments! 
 
-Similar with APNIC's finding, F and M are founded do IPv6 fragmentation. It is worthwhile to mention that in our test F only fragments UDP IPv6 packets and M only fragments TCP segment. For F its fragmenting only UDP can be explained that F's IPV6_USE_MIN_MTU option equals 1 and TCP implementation respects the IPV6_USE_MIN_MTU  not sending TCP segments larger than 1280 octets. 
+As with APNIC's finding, we found that F and M fragment IPv6. It is worthwhile to mention that in our test F only fragments UDP IPv6 packets and M only fragments TCP segment. F fragmenting only UDP can be explained that F's DNS software sets <tt>IPV6_USE_MIN_MTU</tt> option to 1 and the TCP implementation respects the <tt>IPV6_USE_MIN_MTU</tt>, so does not send TCP segments larger than 1280 octets. 
 
-Regarding TCP MSS setting,in APNIC's blog article it is suggested that TCP MSS should be set 1220 octets. It is observed that H already accepted Geoff's suggestion as the time of writing. TCP MSS setting in root server is relevant because there are mainly two risks if TCP MSS is not set appropriately: one is introduced in APNIC's blog article to avoid Path MTU Black Hole in which large TCP segment may be dropped in the middle but ICMP6 PTB message is lost or filtered. Another risk is not covered by that article but IMHO is more relevant . That is the risk that large TCP segment is to be fragmented into IPv6 fragments by root servers if TCP dose not respect IPV6_USE_MIN_MTU socket option and IPV6_USE_MIN_MTU=1 in that server (ref TBD). 
+TCP MSS setting,in APNIC's blog article it is suggested that TCP MSS should be set 1220 octets. It is observed that H already accepted Geoff's suggestion as the time of writing. TCP MSS setting in root server is relevant because there are mainly two risks if TCP MSS is not set properly. One introduced in APNIC's blog article is Path MTU (PMTU) Black Hole in which large TCP segment may be dropped in the middle but ICMP6 PTB message is lost or filtered. Another risk is not covered by that article but is also relevant. That is the behavior where the IP packets TCP sent for segments are fragmented by root servers if TCP does not respect the <tt>IPV6_USE_MIN_MTU</tt> socket option and <tt>IPV6_USE_MIN_MTU=1</tt> in that server (see [_TCP and MTU in IPv6_](https://yeti-dns.org/resource/2016workshop/5.tcp-mtu.pdf), presented by Akira Kato at the 2016 Yeti workshop). 
 
-M is fragmenting the TCP segment in this way! It is odd that large UDP response of M  is not fragmented.
+M is fragmenting the TCP segment in this way! It is odd that large UDP responses of M are not fragmented.
 
-As to truncate behavior of Root server, as expected, our test shows the same pattern that in IPv4 B and G truncate the response, in IPv6 A and J join B and G to truncate the response. By definition truncation happens when DNS massage length is greater than that permitted on the transmission channel. The truncation behavior of A, B, G and J  looks odd because they truncate the response even when both query and response specifies a large EDNS0 buffer size. There must be a independent and paralleled routine to determine truncate or not. Obviously for these root operators they prefer to  truncate the response, fall back to TCP than fragmenting a larger response. This preference is stronger in IPv6 and IPv4 (A and J) because the potential problem of fragments missing or filtering in IPv6 is worse than in IPv4 which is explained in detailed in APNIC blog article. ( 900?)
+As for the truncation behavior of root servers, our test shows the same pattern that in IPv4 B and G truncate the response, in IPv6 A and J join B and G to truncate the response. By definition truncation happens when DNS message length is greater than that permitted on the transmission channel. The truncation behavior of A, B, G and J looks odd because they truncate the response even when both query and response specifies a large EDNS0 buffer size. There must be a separate method to determine whether to truncate or not. Obviously for these root operators they prefer to  truncate the response and fall back to TCP rather than fragmenting a larger response. This preference is actually stronger in IPv6 and IPv4, as A and J send truncated packets of 900 octets, possibly because the potential problem of fragments missing or filtering in IPv6 is worse than in IPv4 (as explained in detailed in APNIC blog article).
 
-It is observed that there is a Server Failure from E in IPv6 and it happens only in China. It is also observed C in IPv6 and M in IPv4 are unreachable as the time of testing. By trace-route, the problem is spotted by upstream network provides. It reminds us that DNS system especially the Root server system is vulnerable due to security attack or routing problems.
+We observe that there is a Server Failure response (<tt>SERVFAIL</tt>) from E in IPv6 which happens only in China. We also observed C in IPv6 and M in IPv4 are unreachable as the time of testing. By trace-route, the problem is spotted by upstream network provides. It reminds us that DNS system - even the root server system - is vulnerable to network attacks or routing problems.
 
-### Test on Yeti DNS Root Server
+### 3. Tests on the Yeti DNS Root Servers
 
-The next step is to dig the same query against Yeti DNS root server. And what we see from each Yeti root server is shown in Table 2.
+The next step is to <tt>dig</tt> the same query against Yeti DNS root servers. And what we see from each Yeti root server is shown in **Table 2**.
 
 | Num  |Operator|Response size|Truncate| Fragment |TCP MSS|
 |------|----|-------------|--------|--------- |-------|
@@ -82,18 +84,74 @@ The next step is to dig the same query against Yeti DNS root server. And what we
 |#23   |dnsworkshop/informnis | 1269      |  N    |N|	1440/1440|
 |#24   |Monshouwer Internet Diensten| 1255      |  N    |N|	1440/1440|
 |#25   |DATEV | 1255      |  N    |N|	1440/1380|
-Table 2 – Yeti Root Server Response Profile to a large DNS response
+**Table 2** – Yeti Root Server Response Profile to a large DNS response
 
-No Truncation for all Yeti root server. That's means not additional DNS routine designed for TC in Yeti root servers.
+We see no truncation for any Yeti root server. That's means none of the Yeti servers have truncation logic apart from the server default truncation, based on the EDNS buffer sizes.
 
-It is noticed that #2 and #14 accept Geoff's suggest to change TCP MSS to 1220 and reduce the risk for TCP segment fragmentation.
+We notice that #2 and #14 accept Geoff's suggestion to change TCP MSS to 1220 and reduce the risk for TCP segment fragmentation (although perhaps they were configured this way before this recommendation).
 
-For #23 (Bundy?) The response is bigger than others because it does not apply name compression for mname and rname in SOA record which increase 12 octets , and it also compressed the root from one label to two labels.
+For #23 (running Microsoft DNS), the response is bigger than others because it does not apply name compression for the <tt>mname</tt> and <tt>rname</tt> fields in the SOA record - leading to an increase of 12 octets, and it also name compression on the root label itself, resulting in a bigger packet.
 
-### Metrics for scoring
+### 4. Metrics for Scoring
 
-### Scoring Yeti Root Servers
+Like Geoff, we can use a similar five star rating system for Yeti root
+operators. Of course, we won't use the IPv4 ratings, since Yeti is
+IPv6-only.  We can "borrow" 3 of Geoff's stars:
 
+* If the IPv6 UDP packet is sent without fragmentation for packets up
+  to 1,500 octets in size, then let’s give the server a star.
+* If the IPv6 UDP packet is sent without truncation for IPv6 packet
+  sizes up to 1,500 octets, then let’s give the server a star.
+* If the offered IPv6 TCP MSS value is no larger than 1,220 octets,
+  then let’s give the server another star.
 
+We can suggest two more stars:
 
+* If the IPv6 TCP packets are sent without IP fragmentation, we will
+  give the server a star.
+* If the server compresses all labels in the packet, we give the
+  server a star. (Not technically the "penalize Microsoft" star, but
+  in practice it is.)
 
+### 5. Scoring Yeti Root Servers
+
+Using this system we rate the Yeti servers.
+
+| Num  | Stars | Comments |
+|------|-------|----------|
+|#1    | &#9733;&#9733; | Fragments both UDP and TCP, using TCP MSS of 1380 |
+|#2    | &#9733;&#9733;&#9733;&#9733;  | Fragments UDP |
+|#3    | &#9733;&#9733; | Fragments both UDP and TCP, using TCP MSS of 1440 |
+|#4    | &#9733;&#9733; | Fragments both UDP and TCP, using TCP MSS of 1380 |
+|#5    | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
+|#6    | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
+|#7    | &#9733;&#9733; | Fragments both UDP and TCP, using TCP MSS of 1440 |
+|#8    | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
+|#9    | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
+|#10   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
+|#11   | [_nul points_](https://en.wiktionary.org/wiki/nul_points) | Server not responding during the test. |
+|#12   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
+|#13   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1380 |
+|#14   | &#9733;&#9733;&#9733;&#9733;&#9733; | Our only 5-point server! |
+|#15   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
+|#16   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1380 |
+|#17   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1380 |
+|#18   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1380 |
+|#19   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
+|#20   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
+|#21   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1380 |
+|#22   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
+|#23   | &#9733;&#9733;&#9733; | Using TCP MSS of 1440, doesn't compress SOA fully. |
+|#24   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
+|#25   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1380 |
+**Table 3** – Starry View of Yeti Servers
+
+If we can make setting the TCP MSS at 1220 a common practice then we
+should have a lot of "5 star" Yeti servers.
+
+### 6. Conclusion
+
+We found it interesting to replicate Geoff's results, and were happy
+to be able to use similar ratings across the Yeti servers. As always,
+please let us know what you think and what you'd like for us to look
+at in either the IANA or Yeti root servers.
