@@ -3,17 +3,17 @@
 
 ### 1. Introduction
 
-[Yeti DNS Project](https://yeti-dns.org) is a live DNS root server system testbed which is designed and operated for experiments and testing. Many people are curious how it works under an environment which is pure IPv6, with more than 13 NS servers, with multiple signers, and testing ZSK/KSK rolling. One key issue here is large DNS responses, because many Yeti experiments lead to large DNS responses - even more than 1600 octets.
+[Yeti DNS Project](https://yeti-dns.org) <sup>[1]</sup> is a live DNS root server system testbed which is designed and operated for experiments and testing. Many people are curious how it works under an environment which is pure IPv6, with more than 13 NS servers, with multiple signers, and testing ZSK/KSK rolling. One key issue here is large DNS responses, because many Yeti experiments lead to large DNS responses - even more than 1600 octets.
 
 
-Why large DNS responses are relevant and how DNS handles large responses is introduced comprehensively by Geoff's articles published in the APNIC blog [_Evaluating IPv4 and IPv6 packet fragmentation_](https://blog.apnic.net/2016/01/28/evaluating-ipv4-and-ipv6-packet-frangmentation/) and [_Fragmenting IPv6_](https://blog.apnic.net/2016/05/19/fragmenting-ipv6/) (thanks Geoff!). More recently, Geoff published a pair of articles examining the root servers system behavior, [_Scoring the Root Server System_](https://labs.apnic.net/?p=915) and [_Scoring the DNS Root Server System, Pt 2 - A Sixth Star?_](https://labs.apnic.net/?p=924). In these articles, a scoring model is proposed and applied it to evaluate current 13 DNS root servers how they handle large response.
+Why large DNS responses are relevant and how DNS handles large responses is introduced comprehensively by Geoff's articles published in the APNIC blog [_Evaluating IPv4 and IPv6 packet fragmentation_](https://blog.apnic.net/2016/01/28/evaluating-ipv4-and-ipv6-packet-frangmentation/)  <sup>[2]</sup>  and [_Fragmenting IPv6_](https://blog.apnic.net/2016/05/19/fragmenting-ipv6/)  <sup>[3]</sup>  (thanks Geoff!). More recently, Geoff published a pair of articles examining the root servers system behavior, [_Scoring the Root Server System_](https://labs.apnic.net/?p=915)  <sup>[4]</sup>  and [_Scoring the DNS Root Server System, Pt 2 - A Sixth Star?_](https://labs.apnic.net/?p=924)  <sup>[5]</sup> . In these articles, a scoring model is proposed and applied it to evaluate current 13 DNS root servers how they handle large response.
 
 Triggered by Geoff's work, we formed the idea of scoring the Yeti DNS root server system using the same testing and metrics. The results are summarized in this document. 
 
 
 ### 2. Repeat the Tests on the IANA DNS Root Servers
 
-We first repeat the testing on the IANA DNS root servers. It is expected to confirm the test results, but may show some new findings from different vantage points and metrics. Using the same approach we use the [<tt>dig</tt> command](https://en.wikipedia.org/wiki/Dig_(command)) to send queries against each root servers with a long query name for a non-existent domain name like this to get a response of 1268 octets:
+We first repeat the testing on the IANA DNS root servers. It is expected to confirm the test results, but may show some new findings from different vantage points and metrics. Using the same approach we use the [<tt>dig</tt>](https://en.wikipedia.org/wiki/Dig_(command) command to send queries against each root servers with a long query name for a non-existent domain name like this to get a response of 1268 octets:
 
     dig aaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +dnssec @198.41.0.4    +bufsize=4096
 
@@ -43,9 +43,9 @@ There is another difference when we display the TCP MSS information in the table
 
 Let's look at fragments! 
 
-As with APNIC's finding, we found that F and M fragment IPv6. It is worthwhile to mention that in our test F only fragments UDP IPv6 packets and M only fragments TCP segment. F fragmenting only UDP can be explained that F's DNS software sets <tt>IPV6_USE_MIN_MTU</tt> option to 1 and the TCP implementation respects the <tt>IPV6_USE_MIN_MTU</tt>, so does not send TCP segments larger than 1280 octets. 
+As with APNIC's finding, we found that F and M fragment IPv6. It is worthwhile to mention that in our test F only fragments UDP IPv6 packets and M only fragments TCP segment. F fragmenting only UDP can be explained that F's DNS software sets <tt>IPV6_USE_MIN_MTU</tt> option to 1 and the TCP implementation respects the <tt>IPV6_USE_MIN_MTU</tt>, so does not send TCP segments larger than 1280 octets. It is unkonwn why M fragements only TCP segement.
 
-TCP MSS setting,in APNIC's blog article it is suggested that TCP MSS should be set 1220 octets. It is observed that H already accepted Geoff's suggestion as the time of writing. TCP MSS setting in root server is relevant because there are mainly two risks if TCP MSS is not set properly. One introduced in APNIC's blog article is Path MTU (PMTU) Black Hole in which large TCP segment may be dropped in the middle but ICMP6 PTB message is lost or filtered. Another risk is not covered by that article but is also relevant. That is the behavior where the IP packets TCP sent for segments are fragmented by root servers if TCP does not respect the <tt>IPV6_USE_MIN_MTU</tt> socket option and <tt>IPV6_USE_MIN_MTU=1</tt> in that server (see [_TCP and MTU in IPv6_](https://yeti-dns.org/resource/2016workshop/5.tcp-mtu.pdf), presented by Akira Kato at the 2016 Yeti workshop). 
+TCP MSS setting,in APNIC's blog article it is suggested that TCP MSS should be set 1220 octets. It is observed that H already accepted Geoff's suggestion as the time of writing. TCP MSS setting in root server is relevant because there are mainly two risks if TCP MSS is not set properly. One introduced in APNIC's blog article is Path MTU (PMTU) Black Hole in which large TCP segment may be dropped in the middle but ICMP6 PTB message is lost or filtered. Another risk is not covered by that article but is also relevant. That is the behavior where the IP packets TCP sent for segments are fragmented by root servers if TCP does not respect the <tt>IPV6_USE_MIN_MTU</tt> socket option and <tt>IPV6_USE_MIN_MTU=1</tt> in that server. Please see [TCP and MTU in IPv6](https://yeti-dns.org/resource/2016workshop/5.tcp-mtu.pdf) <sup>[6]</sup> , presented by Akira Kato at the 2016 Yeti workshop. 
 
 M is fragmenting the TCP segment in this way! It is odd that large UDP responses of M are not fragmented.
 
@@ -92,6 +92,9 @@ We notice that #2 and #14 accept Geoff's suggestion to change TCP MSS to 1220 an
 
 For #23 (running Microsoft DNS), the response is bigger than others because it does not apply name compression for the <tt>mname</tt> and <tt>rname</tt> fields in the SOA record - leading to an increase of 12 octets, and it also name compression on the root label itself, resulting in a bigger packet.
 
+Note that currently Yeti implements [MZSK](https://github.com/BII-Lab/Yeti-Project/blob/master/doc/Experiment-MZSK.md)  <sup>[7]</sup>  which produces large DNS response with multiple ZSKs. By digging dnskey record with DNSSEC signature, all yeti servers response with DNS massage size up to 1689 octets and fragment UDP response. When <tt>+tcp</tt> option is added into <tt>dig</tt>  which means DNS query via TCP, The  result in Fragment column is the same with table 2 (#1, #3, #4, #7 fragment TCP segments). So in Yeti's case there is a trade-off whether truncate the large responses or fragment them. No way to avoid the cost brought by the large response (1500+ octets) based on existing DNS protocol and implementations. However, some proposals are made to fit the problem by [DNS message fragments](https://tools.ietf.org/html/draft-muks-dns-message-fragments-00) <sup>[8]</sup>  or transmitting the large DNS response with connection oriented like [TCP](https://tools.ietf.org/html/draft-song-dnsop-tcp-primingexchange-00) <sup>[9]</sup>  or [HTTP](https://tools.ietf.org/html/draft-ietf-dnsop-dns-wireformat-http-00)  <sup>[10]</sup> .
+
+
 ### 4. Metrics for Scoring
 
 Like Geoff, we can use a similar five star rating system for Yeti root
@@ -120,18 +123,18 @@ Using this system we rate the Yeti servers.
 | Num  | Stars | Comments |
 |------|-------|----------|
 |#1    | &#9733;&#9733; | Fragments both UDP and TCP, using TCP MSS of 1380 |
-|#2    | &#9733;&#9733;&#9733;&#9733;  | Fragments UDP |
+|#2    | &#9733;&#9733;&#9733;  | Fragments UDP, do not compresses all labels in the packet |
 |#3    | &#9733;&#9733; | Fragments both UDP and TCP, using TCP MSS of 1440 |
-|#4    | &#9733;&#9733; | Fragments both UDP and TCP, using TCP MSS of 1380 |
-|#5    | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
+|#4    | &#9733; | Fragments both UDP and TCP, using TCP MSS of 1380,do not compresses all labels in the packet |
+|#5    | &#9733;&#9733;&#9733; | Using TCP MSS of 1440,do not compresses all labels in the packet |
 |#6    | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
 |#7    | &#9733;&#9733; | Fragments both UDP and TCP, using TCP MSS of 1440 |
 |#8    | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
 |#9    | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
-|#10   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
+|#10   | &#9733;&#9733;&#9733; | Using TCP MSS of 1440,do not compresses all labels in the packet |
 |#11   | [_nul points_](https://en.wiktionary.org/wiki/nul_points) | Server not responding during the test. |
-|#12   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
-|#13   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1380 |
+|#12   | &#9733;&#9733;&#9733; | Using TCP MSS of 1440,do not compresses all labels in the packet |
+|#13   | &#9733;&#9733;&#9733;| Using TCP MSS of 1380,do not compresses all labels in the packet |
 |#14   | &#9733;&#9733;&#9733;&#9733;&#9733; | Our only 5-point server! |
 |#15   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
 |#16   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1380 |
@@ -142,8 +145,8 @@ Using this system we rate the Yeti servers.
 |#21   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1380 |
 |#22   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
 |#23   | &#9733;&#9733;&#9733; | Using TCP MSS of 1440, doesn't compress SOA fully. |
-|#24   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
-|#25   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1380 |
+|#24   | &#9733;&#9733;&#9733; | Using TCP MSS of 1440,do not compresses all labels in the packet |
+|#25   | &#9733;&#9733;&#9733; | Using TCP MSS of 1380,do not compresses all labels in the packet |
 **Table 3** – Starry View of Yeti Servers
 
 If we can make setting the TCP MSS at 1220 a common practice then we
@@ -151,7 +154,32 @@ should have a lot of "5 star" Yeti servers.
 
 ### 6. Conclusion
 
-We found it interesting to replicate Geoff's results, and were happy
-to be able to use similar ratings across the Yeti servers. As always,
-please let us know what you think and what you'd like for us to look
+We found it interesting to replicate APNIC's results, and were happy
+to be able to use similar ratings across the Yeti servers. 
+
+Regarding the DNS large response issue in general, operator can adopt some suggestions on IPV6_USE_MIN_MTU option, TCP MSS setting and DNS massage compression. However, it is still unknown on issues like IPv6 DNS fragmentation in UDP for very large response. It is still unknown is it better to truncate or fragment the large response... More attention is needed in the community because we are going to build the whole Internet in IPv6 infrastructure.       
+
+As always,lease let us know what you think and what you'd like for us to look
 at in either the IANA or Yeti root servers.
+
+### 7. Reference
+
+[1] [_Yeti DNS Project_](https://yeti-dns.org), www.yeti-dns.org 
+
+[2] Geoff Huston, [_Evaluating IPv4 and IPv6 packet fragmentation_](https://blog.apnic.net/2016/01/28/evaluating-ipv4-and-ipv6-packet-frangmentation/), APNIC blog, January 2016.
+
+[3] Geoff Huston, [_Fragmenting IPv6_](https://blog.apnic.net/2016/05/19/fragmenting-ipv6/)， APNIC blog, May 2016.
+
+[4] Geoff Huston, [_Scoring the Root Server System_](https://blog.apnic.net/2016/11/15/scoring-dns-root-server-system/),APNIC blog, November 2016.
+
+[5] Geoff Huston, [_Scoring the DNS Root Server System, Pt 2 - A Sixth Star?_](https://blog.apnic.net/2016/12/12/scoring-dns-root-server-system-pt-2-sixth-star/), APNIC blog, December 2016.
+
+[6] Akira Kato, [_TCP and MTU in IPv6_](https://yeti-dns.org/resource/2016workshop/5.tcp-mtu.pdf) , Yeti DNS Workshop, November 2016
+
+[7] Shane Kerr and Linjian Song, [_Multi-ZSK Experiment_](https://github.com/BII-Lab/Yeti-Project/blob/master/doc/Experiment-MZSK.md), Yeti DNS Project
+
+[8] Mukund Sivaraman, Shane Kerr and Linjian Song, [_DNS message fragments_](https://tools.ietf.org/html/draft-muks-dns-message-fragments-00), IETF Draft, July 20, 2015
+
+[9] Linjian Song,Di Ma [_Using TCP by Default in Root Priming Exchange_](https://tools.ietf.org/html/draft-song-dnsop-tcp-primingexchange-00),IETF Draft, November 26, 2014
+
+[10] Linjian Song, Paul Vixie, Shane Kerr and Runxia Wan [_DNS wire-format over HTTP_](https://tools.ietf.org/html/draft-ietf-dnsop-dns-wireformat-http-00), IETF draft,September 15, 2016 
