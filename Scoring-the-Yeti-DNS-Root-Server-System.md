@@ -8,7 +8,7 @@
 
 Why large DNS responses are relevant and how DNS handles large responses is introduced comprehensively by Geoff's articles published in the APNIC blog [_Evaluating IPv4 and IPv6 packet fragmentation_](https://blog.apnic.net/2016/01/28/evaluating-ipv4-and-ipv6-packet-frangmentation/)  <sup>[2]</sup>  and [_Fragmenting IPv6_](https://blog.apnic.net/2016/05/19/fragmenting-ipv6/)  <sup>[3]</sup>  (thanks Geoff!). More recently, Geoff published a pair of articles examining the root servers system behavior, [_Scoring the Root Server System_](https://labs.apnic.net/?p=915)  <sup>[4]</sup>  and [_Scoring the DNS Root Server System, Pt 2 - A Sixth Star?_](https://labs.apnic.net/?p=924)  <sup>[5]</sup> . In these articles, a scoring model is proposed and applied it to evaluate current 13 DNS root servers how they handle large response.
 
-Triggered by Geoff's work, we formed the idea of scoring the Yeti DNS root server system using the same testing and metrics. The results are summarized in this document. 
+Triggered by Geoff's work [4] and [5], we formed the idea of scoring the Yeti DNS root server system using the same testing and metrics. The results are summarized in this document. 
 
 
 ### 2. Repeat the Tests on the IANA DNS Root Servers
