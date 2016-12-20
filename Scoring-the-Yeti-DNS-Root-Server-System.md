@@ -37,7 +37,9 @@ And what we see from each root server is shown in **Table 1**.
 |M|-|-|-|-|1268|N|TCP|1440/1380|
 **Table 1** – IANA Root Server Response Profile with large DNS responses
 
-The structure of **Table 1** is a slightly different from the table in APNIC's blog article. There are additional columns to show the exact size of DNS reponse messages from each root server. We list them because we found them are different by 3 octets. A,E,H,J,K,L,M have responses of 1268 octets and others 1265 octets. After some digging, we found that different root servers behave differently due to the name compression of the NSEC record.  In the case of our non-existent name query, 'aaa' is a common label in both NSEC records of root and 'aaa'. Saving 3 bytes by careful name compression is not a huge optimization but in certain cases even 3 bytes could avoid truncation or fragmentation.   
+The structure of **Table 1** is a slightly different from the table in APNIC's blog article. There are additional columns to show the exact size of DNS reponse messages from each root server. We list them because we found them are different by 3 octets. A,E,H,J,K,L,M have responses of 1268 octets and others 1265 octets. After some digging, we found that different root servers behave differently due to the sequence of NSEC RRs in the response. 
+
+In our case the sequence "aaa." as Next Domain Name in NSEC RR sometimes appears before it is used as a label, and then other "aaa" labels following can be compressed using DNS compression, and we see 1265 octets. Sometimes it does not, and we see 1268 octets.(Compression on Next Domain Name of NSEC RR is not allowed) There is no protocol requirement for ordering the RR for an optimal response. So we regard it as a trivial differences. But the compression issue on #23 in table 2 is nontrivial which will be introduced in next section.
 
 There is another difference when we display the TCP MSS information in the table. In APNIC's article it said that in IPv4 all the root servers offer a TCP MSS of 1460 octets and the value is 1440 octets in IPv6. It may be true if there is no middle-box or firewall which changes the TCP MSS intentionally. In our observation, the TCP SYN initiated by testing resolver carries the TCP MSS of 1460 octets in IPv4 and 1440 octets in IPv6, but the TCP SYN/ACK responded by root servers are all 1380 octets. As far as we know, TCP MSS of 1380 octets is a special value used by some firewalls on the path for security reasons (CISCO ASA firewall). 
 
@@ -60,7 +62,7 @@ The next step is to <tt>dig</tt> the same query against Yeti DNS root servers. A
 | Num  |Operator|Response size|Truncate| Fragment |TCP MSS|
 |------|----|-------------|--------|--------- |-------|
 |#1   |BII | 1252      |  N    |UDP+TCP |	1440/1380|
-|#2   |WIDE| 1255      |  N    |UDP     | 1440/1220|
+|#2   |WIDE| 1252      |  N    |UDP     | 1440/1220|
 |#3   |TISF| 1252      |  N    |UDP+ TCP|	1440/1440|
 |#4   |AS59715| 1255    |  N    |UDP+ TCP  | 1440/1380|
 |#5   |Dahu Group| 1255      |  N    |N		  |	1440/1440|
@@ -90,7 +92,7 @@ We see no truncation for any Yeti root server. That's means none of the Yeti ser
 
 We notice that #2 and #14 accept Geoff's suggestion to change TCP MSS to 1220 and reduce the risk for TCP segment fragmentation (although perhaps they were configured this way before this recommendation).
 
-For #23 (running Microsoft DNS), the response is bigger than others because it does not apply name compression for the <tt>mname</tt> and <tt>rname</tt> fields in the SOA record - leading to an increase of 12 octets, and it also name compression on the root label itself, resulting in a bigger packet.
+For #23 (running Microsoft DNS), the response is bigger than others because it does not apply name compression for the <tt>mname</tt> and <tt>rname</tt> fields in the SOA record - leading to an increase of 12 octets, and it also apply name compression on the root label itself, resulting in a bigger packet. Name compression is not a huge optimization but in certain cases octets saved by name compression could avoid truncation or fragmentation.
 
 Note that currently Yeti implements [MZSK](https://github.com/BII-Lab/Yeti-Project/blob/master/doc/Experiment-MZSK.md)  <sup>[7]</sup>  which produces large DNS responses due to multiple ZSKs. By querying for DNSKEY records with their DNSSEC signature, all Yeti servers response with a DNS message size up to 1689 octets and fragment the UDP response. When the <tt>+tcp</tt> option is added to <tt>dig</tt> - performing the DNS query via TCP - the result in the "Fragment" column is the same as that in Table 2 (#1, #3, #4, #7 fragment TCP segments). So in Yeti's case there is a trade-off between whether to truncate the large responses or to fragment them. There is no way to avoid the cost brought by the large response (1500+ octets) with the existing DNS protocol and implementations. However, some proposals are made to address the problem by [DNS message fragments](https://tools.ietf.org/html/draft-muks-dns-message-fragments-00) <sup>[8]</sup>  or always transmitting the large DNS response with connection-oriented protocols like [TCP](https://tools.ietf.org/html/draft-song-dnsop-tcp-primingexchange-00) <sup>[9]</sup> or [HTTP](https://tools.ietf.org/html/draft-ietf-dnsop-dns-wireformat-http-00) <sup>[10]</sup> .
 
@@ -123,18 +125,18 @@ Using this system we rate the Yeti servers.
 | Num  | Stars | Comments |
 |------|-------|----------|
 |#1    | &#9733;&#9733; | Fragments both UDP and TCP, using TCP MSS of 1380 |
-|#2    | &#9733;&#9733;&#9733;  | Fragments UDP, do not compresses all labels in the packet |
+|#2    | &#9733;&#9733;&#9733;&#9733;  | Fragments UDP |
 |#3    | &#9733;&#9733; | Fragments both UDP and TCP, using TCP MSS of 1440 |
-|#4    | &#9733; | Fragments both UDP and TCP, using TCP MSS of 1380,do not compresses all labels in the packet |
-|#5    | &#9733;&#9733;&#9733; | Using TCP MSS of 1440,do not compresses all labels in the packet |
+|#4    | &#9733;&#9733; | Fragments both UDP and TCP, using TCP MSS of 1380 |
+|#5    | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
 |#6    | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
-|#7    | &#9733;&#9733; | Fragments both UDP and TCP, using TCP MSS of 1440 |
+|#7    | &#9733;&#9733;&#9733; | Fragments both UDP and TCP |
 |#8    | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
 |#9    | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
-|#10   | &#9733;&#9733;&#9733; | Using TCP MSS of 1440,do not compresses all labels in the packet |
+|#10   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
 |#11   | [_nul points_](https://en.wiktionary.org/wiki/nul_points) | Server not responding during the test. |
-|#12   | &#9733;&#9733;&#9733; | Using TCP MSS of 1440,do not compresses all labels in the packet |
-|#13   | &#9733;&#9733;&#9733;| Using TCP MSS of 1380,do not compresses all labels in the packet |
+|#12   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
+|#13   | &#9733;&#9733;&#9733;&#9733;| Using TCP MSS of 1380 |
 |#14   | &#9733;&#9733;&#9733;&#9733;&#9733; | Our only 5-point server! |
 |#15   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
 |#16   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1380 |
@@ -145,8 +147,8 @@ Using this system we rate the Yeti servers.
 |#21   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1380 |
 |#22   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
 |#23   | &#9733;&#9733;&#9733; | Using TCP MSS of 1440, doesn't compress SOA fully. |
-|#24   | &#9733;&#9733;&#9733; | Using TCP MSS of 1440,do not compresses all labels in the packet |
-|#25   | &#9733;&#9733;&#9733; | Using TCP MSS of 1380,do not compresses all labels in the packet |
+|#24   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1440 |
+|#25   | &#9733;&#9733;&#9733;&#9733; | Using TCP MSS of 1380 |
 **Table 3** – Starry View of Yeti Servers
 
 If we can make setting the TCP MSS at 1220 a common practice then we
